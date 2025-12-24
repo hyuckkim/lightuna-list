@@ -26,8 +26,17 @@ for item in data:
     title = escape_js_string(item["title"].strip())
 
     entries.append(
-        f'{{ id: "{id_}", source: "{source}", url: "{url}", title: "{title}" }}'
+        {"id": id_, "source": source, "url": url, "title": title}
     )
+
+# threadId를 기준으로 오름차순 정렬
+entries.sort(key=lambda x: int(x["id"]))
+
+# JavaScript 객체 형식으로 변환
+entries_js = [
+    f'{{ id: "{entry["id"]}", source: "{entry["source"]}", url: "{entry["url"]}", title: "{entry["title"]}" }}'
+    for entry in entries
+]
 
 # JS 함수 정의
 js_code = """
@@ -35,9 +44,9 @@ const pageSize = 50;
 let currentPage = 1;
 
 function renderResults(list) {
-  const container = document.getElementById(\"results\");
+  const container = document.getElementById("results");
   container.innerHTML = list.map(e =>
-    `<p>[${e.id}] ${e.source} - <a href=\"${e.url}\" target=\"_blank\">${e.title}</a></p>`
+    `<p>[${e.id}] ${e.source} - <a href="${e.url}" target="_blank">${e.title}</a></p>`
   ).join("");
 }
 
@@ -48,15 +57,19 @@ function paginate(list, page) {
 
 function renderPagination(list) {
   const totalPages = Math.ceil(list.length / pageSize);
-  const container = document.getElementById(\"pagination\");
+  const container = document.getElementById("pagination");
   container.innerHTML = Array.from({length: totalPages}, (_, i) =>
-    `<button onclick=\"goPage(${i+1})\">${i+1}</button>`
+    `<button onclick="goPage(${i+1})">${i+1}</button>`
   ).join(" ");
 }
 
 function goPage(page) {
   currentPage = page;
-  const q = document.getElementById(\"searchBox\").value.toLowerCase();
+  const q = document.getElementById("searchBox").value.toLowerCase();
+  
+  const newHash = q ? `#${encodeURIComponent(q)}` : window.location.pathname + window.location.search;
+  history.replaceState(null, null, newHash);
+
   const filtered = entries.filter(e =>
     e.title.toLowerCase().includes(q) ||
     e.source.toLowerCase().includes(q)
@@ -65,10 +78,27 @@ function goPage(page) {
   renderPagination(filtered);
 }
 
-document.getElementById(\"searchBox\").addEventListener(\"input\", () => goPage(1));
+function initializeSearch() {
+  const hash = window.location.hash.substring(1); // Remove the '#' from the hash
+  const searchBox = document.getElementById("searchBox");
+  if (hash) {
+    searchBox.value = decodeURIComponent(hash);
+  }
+  goPage(1);
+}
+
+document.getElementById("searchBox").addEventListener("input", () => goPage(1));
+window.addEventListener('hashchange', () => {
+  const hash = decodeURIComponent(window.location.hash.substring(1));
+  const searchBox = document.getElementById("searchBox");
+  if (searchBox.value !== hash) {
+    searchBox.value = hash;
+    goPage(1);
+  }
+});
 
 // 초기 렌더링
-goPage(1);"""
+initializeSearch();"""
 
 
 # 최종 HTML 생성
@@ -92,7 +122,7 @@ const entries = [
 </script>
 </body>
 </html>
-""" % (",\n".join(entries, ), js_code)
+""" % (",\n".join(entries_js, ), js_code)
 
 with open(sys.argv[2], "w", encoding="utf-8") as f:
     f.write(html_output)
