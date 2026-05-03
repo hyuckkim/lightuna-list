@@ -6,11 +6,14 @@
 </head>
 <body>
 
-<input type="text" id="searchBox" placeholder="검색어 입력">
+<input type="text" id="searchBox" placeholder="검색어 입력 (&으로 구분)">
 <div id="results"></div>
 <div id="pagination"></div>
 
 <script>
+const pageSize = 50;
+let currentPage = 1;
+
 const entries = [
 { id: "1455700066", source: "익명의 연어 씨", url: "https://bbs2.tunaground.net/archive/situplay/1455700066", title: "☆★☆★상황극 게시판 잡담 스레☆★☆★" },
 { id: "1455710690", source: "익명의 연어 씨 / PSYCHO 스레주", url: "https://bbs2.tunaground.net/archive/situplay/1455710690", title: "[ All/ 판타지 ] PSYCHOㅣ 01" },
@@ -4947,9 +4950,6 @@ const entries = [
 { id: "1597059172", source: "대충", url: "https://bbs2.tunaground.net/archive/situplay/1597059172", title: "[상L]끝나가는 세계와 과거이야기" }
 ];
 
-const pageSize = 50;
-let currentPage = 1;
-
 function renderResults(list) {
   const container = document.getElementById("results");
   container.innerHTML = list.map(e =>
@@ -4972,21 +4972,25 @@ function renderPagination(list) {
 
 function goPage(page) {
   currentPage = page;
-  const q = document.getElementById("searchBox").value.toLowerCase();
+  const q = document.getElementById("searchBox").value.toLowerCase()
+     .split("&").map(s => s.trim()).filter(s => s);
   
-  const newHash = q ? `#${encodeURIComponent(q)}` : window.location.pathname + window.location.search;
+  
+  const newHash = q ? `#${encodeURIComponent(q.join("&"))}` : window.location.pathname + window.location.search;
   history.replaceState(null, null, newHash);
 
   const filtered = entries.filter(e =>
-    e.title.toLowerCase().includes(q) ||
-    e.source.toLowerCase().includes(q)
+    q.every(term =>
+      e.title.toLowerCase().includes(term) ||
+      e.source.toLowerCase().includes(term)
+    )
   );
   renderResults(paginate(filtered, page));
   renderPagination(filtered);
 }
 
 function initializeSearch() {
-  const hash = window.location.hash.substring(1); // Remove the '#' from the hash
+  const hash = window.location.hash.substring(1);
   const searchBox = document.getElementById("searchBox");
   if (hash) {
     searchBox.value = decodeURIComponent(hash);
@@ -5004,7 +5008,6 @@ window.addEventListener('hashchange', () => {
   }
 });
 
-// 초기 렌더링
 initializeSearch();
 </script>
 </body>

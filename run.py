@@ -1,6 +1,7 @@
 import json
 import re
 import sys
+import os
 
 def escape_js_string(s: str) -> str:
     """JS 문자열에 안전하게 들어갈 수 있도록 따옴표와 역슬래시 이스케이프"""
@@ -38,91 +39,14 @@ entries_js = [
     for entry in entries
 ]
 
-# JS 함수 정의
-js_code = """
-const pageSize = 50;
-let currentPage = 1;
-
-function renderResults(list) {
-  const container = document.getElementById("results");
-  container.innerHTML = list.map(e =>
-    `<p>[${e.id}] ${e.source} - <a href="${e.url}" target="_blank">${e.title}</a></p>`
-  ).join("");
-}
-
-function paginate(list, page) {
-  const start = (page - 1) * pageSize;
-  return list.slice(start, start + pageSize);
-}
-
-function renderPagination(list) {
-  const totalPages = Math.ceil(list.length / pageSize);
-  const container = document.getElementById("pagination");
-  container.innerHTML = Array.from({length: totalPages}, (_, i) =>
-    `<button onclick="goPage(${i+1})">${i+1}</button>`
-  ).join(" ");
-}
-
-function goPage(page) {
-  currentPage = page;
-  const q = document.getElementById("searchBox").value.toLowerCase();
-  
-  const newHash = q ? `#${encodeURIComponent(q)}` : window.location.pathname + window.location.search;
-  history.replaceState(null, null, newHash);
-
-  const filtered = entries.filter(e =>
-    e.title.toLowerCase().includes(q) ||
-    e.source.toLowerCase().includes(q)
-  );
-  renderResults(paginate(filtered, page));
-  renderPagination(filtered);
-}
-
-function initializeSearch() {
-  const hash = window.location.hash.substring(1); // Remove the '#' from the hash
-  const searchBox = document.getElementById("searchBox");
-  if (hash) {
-    searchBox.value = decodeURIComponent(hash);
-  }
-  goPage(1);
-}
-
-document.getElementById("searchBox").addEventListener("input", () => goPage(1));
-window.addEventListener('hashchange', () => {
-  const hash = decodeURIComponent(window.location.hash.substring(1));
-  const searchBox = document.getElementById("searchBox");
-  if (searchBox.value !== hash) {
-    searchBox.value = hash;
-    goPage(1);
-  }
-});
-
-// 초기 렌더링
-initializeSearch();"""
-
+# 템플릿 파일 읽기
+template_path = os.path.join(os.path.dirname(sys.argv[0]), "template.html")
+with open(template_path, "r", encoding="utf-8") as f:
+    template_html = f.read()
 
 # 최종 HTML 생성
-html_output = """<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<title>검색 페이지</title>
-</head>
-<body>
-
-<input type="text" id="searchBox" placeholder="검색어 입력">
-<div id="results"></div>
-<div id="pagination"></div>
-
-<script>
-const entries = [
-%s
-];
-%s
-</script>
-</body>
-</html>
-""" % (",\n".join(entries_js, ), js_code)
+entries_str = ",\n".join(entries_js)
+html_output = template_html.replace("/*ENTRIES*/", entries_str)
 
 with open(sys.argv[2], "w", encoding="utf-8") as f:
     f.write(html_output)

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>검색 페이지</title>
+</head>
+<body>
+
+<input type="text" id="searchBox" placeholder="검색어 입력 (&으로 구분)">
+<div id="results"></div>
+<div id="pagination"></div>
+
+<script>
+const pageSize = 50;
+let currentPage = 1;
+
+const entries = [
+/*ENTRIES*/
+];
+
+function renderResults(list) {
+  const container = document.getElementById("results");
+  container.innerHTML = list.map(e =>
+    `<p>[${e.id}] ${e.source} - <a href="${e.url}" target="_blank">${e.title}</a></p>`
+  ).join("");
+}
+
+function paginate(list, page) {
+  const start = (page - 1) * pageSize;
+  return list.slice(start, start + pageSize);
+}
+
+function renderPagination(list) {
+  const totalPages = Math.ceil(list.length / pageSize);
+  const container = document.getElementById("pagination");
+  container.innerHTML = Array.from({length: totalPages}, (_, i) =>
+    `<button onclick="goPage(${i+1})">${i+1}</button>`
+  ).join(" ");
+}
+
+function goPage(page) {
+  currentPage = page;
+  const q = document.getElementById("searchBox").value.toLowerCase()
+     .split("&").map(s => s.trim()).filter(s => s);
+  
+  
+  const newHash = q ? `#${encodeURIComponent(q.join("&"))}` : window.location.pathname + window.location.search;
+  history.replaceState(null, null, newHash);
+
+  const filtered = entries.filter(e =>
+    q.every(term =>
+      e.title.toLowerCase().includes(term) ||
+      e.source.toLowerCase().includes(term)
+    )
+  );
+  renderResults(paginate(filtered, page));
+  renderPagination(filtered);
+}
+
+function initializeSearch() {
+  const hash = window.location.hash.substring(1);
+  const searchBox = document.getElementById("searchBox");
+  if (hash) {
+    searchBox.value = decodeURIComponent(hash);
+  }
+  goPage(1);
+}
+
+document.getElementById("searchBox").addEventListener("input", () => goPage(1));
+window.addEventListener('hashchange', () => {
+  const hash = decodeURIComponent(window.location.hash.substring(1));
+  const searchBox = document.getElementById("searchBox");
+  if (searchBox.value !== hash) {
+    searchBox.value = hash;
+    goPage(1);
+  }
+});
+
+initializeSearch();
+</script>
+</body>
+</html>
